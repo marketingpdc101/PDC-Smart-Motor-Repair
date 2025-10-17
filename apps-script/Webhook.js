@@ -1,11 +1,16 @@
 /**
- * PDC Smart Motor Repair - Webhook Handlers
+ * PDC Smart Motor Repair - Webhook Handlers (Main Router)
  * 
- * จัดการ Events จาก LINE Webhook
+ * จัดการ Events จาก LINE Webhook และ route ไปยัง Internal/External handlers
+ * 
+ * Architecture:
+ * - Webhook.js (this file) - Main router
+ * - WebhookInternal.js - Internal OA handlers (พนักงาน)
+ * - WebhookExternal.js - External OA handlers (ลูกค้า)
  */
 
 /**
- * Handle LINE Event
+ * Handle LINE Event (Main Router)
  */
 function handleLineEvent(event) {
   const eventType = event.type;
@@ -36,49 +41,316 @@ function handleMessageEvent(event) {
   const messageType = event.message.type;
   const replyToken = event.replyToken;
   
+  // ตรวจสอบว่าเป็น Internal หรือ External OA
+  const isInternal = isInternalUser(userId);
+  
   if (messageType === 'text') {
     const text = event.message.text;
     const textLower = text.toLowerCase();
     
-    // คำสั่งต่างๆ (ไม่ใช้ lowercase เพื่อให้รองรับภาษาไทย)
-    if (text.includes('สถานะ') || textLower.includes('status')) {
-      const response = {
-        type: 'text',
-        text: '📊 สถานะงาน\n\nคุณสามารถดูสถานะงานได้ที่เมนูด้านล่าง หรือติดต่อเจ้าหน้าที่ได้ที่ 02-xxx-xxxx'
-      };
-      replyMessage(replyToken, [response], false); // false = ใช้ External OA
-    } else if (text.includes('งานของฉัน') || textLower.includes('my jobs')) {
-      const response = {
-        type: 'text',
-        text: '🔧 งานของฉัน\n\nคุณสามารถดูรายการงานได้ที่เมนูด้านล่าง หรือกดปุ่ม "ดูสถานะงาน"'
-      };
-      replyMessage(replyToken, [response], false); // false = ใช้ External OA
-    } else if (text.includes('ช่วยเหลือ') || textLower.includes('help')) {
-      const response = {
-        type: 'text',
-        text: '📖 คำสั่งที่ใช้ได้:\n\n' +
-              '• "สถานะ" - ดูสถานะงานล่าสุด\n' +
-              '• "งานของฉัน" - ดูงานทั้งหมด\n' +
-              '• "ช่วยเหลือ" - แสดงคำสั่งนี้\n\n' +
-              'หรือใช้เมนูด้านล่างได้เลย!'
-      };
-      replyMessage(replyToken, [response], false); // false = ใช้ External OA
-    } else {
-      // Default response - ตอบทุกข้อความ
-      const response = {
-        type: 'text',
-        text: 'สวัสดีครับ! 👋\n\nคุณพิมพ์: "' + text + '"\n\nขอบคุณที่ติดต่อ PDC Motor Repair\n\nกรุณาเลือกเมนูด้านล่าง หรือพิมพ์ "ช่วยเหลือ" เพื่อดูคำสั่งทั้งหมด'
-      };
-      
-      try {
-        replyMessage(replyToken, [response], false); // false = ใช้ External OA
-        Logger.log('✅ replyMessage completed');
-      } catch (error) {
-        Logger.log('❌ replyMessage error: ' + error.message);
-        console.error('replyMessage error:', error);
-      }
+    // ========================================
+    // Internal OA Commands (พนักงาน)
+    // ========================================
+    if (isInternal) {
+      handleInternalMessage(text, textLower, userId, replyToken);
+    } 
+    // ========================================
+    // External OA Commands (ลูกค้า)
+    // ========================================
+    else {
+      handleExternalMessage(text, textLower, userId, replyToken);
     }
   }
+}
+
+/**
+ * Handle Internal OA Messages (พนักงาน)
+ */
+function handleInternalMessage(text, textLower, userId, replyToken) {
+  // คำสั่งสำหรับพนักงาน
+  if (text.startsWith('/')) {
+    handleInternalCommand(text, userId, replyToken);
+  } 
+  // งานที่ assign ให้
+  else if (text.includes('งานของฉัน') || textLower.includes('my tasks')) {
+    handleMyTasks(userId, replyToken);
+  }
+  // งานที่รอดำเนินการ
+  else if (text.includes('งานรอ') || textLower.includes('pending')) {
+    handlePendingJobs(userId, replyToken);
+  }
+  // สร้างงานใหม่
+  else if (text.includes('สร้างงาน') || textLower.includes('create job')) {
+    const response = {
+      type: 'text',
+      text: '🆕 สร้างงานใหม่\n\nกรุณาเปิด LIFF App "Job Creation" จากเมนูด้านล่าง\n\nหรือพิมพ์ /help เพื่อดูคำสั่งทั้งหมด'
+    };
+    replyMessage(replyToken, [response], true);
+  }
+  // ช่วยเหลือ
+  else if (text.includes('ช่วยเหลือ') || textLower.includes('help')) {
+    handleInternalHelp(replyToken);
+  }
+  // Default
+  else {
+    const response = {
+      type: 'text',
+      text: '👋 สวัสดีครับ!\n\nพนักงาน: ' + text + '\n\nพิมพ์ /help เพื่อดูคำสั่งทั้งหมด\nหรือใช้เมนูด้านล่าง'
+    };
+    replyMessage(replyToken, [response], true);
+  }
+}
+
+/**
+ * Handle External OA Messages (ลูกค้า)
+ */
+function handleExternalMessage(text, textLower, userId, replyToken) {
+  // คำสั่งต่างๆ (ไม่ใช้ lowercase เพื่อให้รองรับภาษาไทย)
+  if (text.includes('สถานะ') || textLower.includes('status')) {
+    const response = {
+      type: 'text',
+      text: '📊 สถานะงาน\n\nคุณสามารถดูสถานะงานได้ที่เมนูด้านล่าง หรือติดต่อเจ้าหน้าที่ได้ที่ 02-xxx-xxxx'
+    };
+    replyMessage(replyToken, [response], false);
+  } else if (text.includes('งานของฉัน') || textLower.includes('my jobs')) {
+    const response = {
+      type: 'text',
+      text: '🔧 งานของฉัน\n\nคุณสามารถดูรายการงานได้ที่เมนูด้านล่าง หรือกดปุ่ม "ดูสถานะงาน"'
+    };
+    replyMessage(replyToken, [response], false);
+  } else if (text.includes('ช่วยเหลือ') || textLower.includes('help')) {
+    const response = {
+      type: 'text',
+      text: '📖 คำสั่งที่ใช้ได้:\n\n' +
+            '• "สถานะ" - ดูสถานะงานล่าสุด\n' +
+            '• "งานของฉัน" - ดูงานทั้งหมด\n' +
+            '• "ช่วยเหลือ" - แสดงคำสั่งนี้\n\n' +
+            'หรือใช้เมนูด้านล่างได้เลย!'
+    };
+    replyMessage(replyToken, [response], false);
+  } else {
+    // Default response - ตอบทุกข้อความ
+    const response = {
+      type: 'text',
+      text: 'สวัสดีครับ! 👋\n\nคุณพิมพ์: "' + text + '"\n\nขอบคุณที่ติดต่อ PDC Motor Repair\n\nกรุณาเลือกเมนูด้านล่าง หรือพิมพ์ "ช่วยเหลือ" เพื่อดูคำสั่งทั้งหมด'
+    };
+    
+    try {
+      replyMessage(replyToken, [response], false);
+      Logger.log('✅ replyMessage completed');
+    } catch (error) {
+      Logger.log('❌ replyMessage error: ' + error.message);
+      console.error('replyMessage error:', error);
+    }
+  }
+}
+
+/**
+ * Handle Internal Commands (คำสั่ง / สำหรับพนักงาน)
+ */
+function handleInternalCommand(command, userId, replyToken) {
+  const cmd = command.split(' ')[0].toLowerCase();
+  const args = command.split(' ').slice(1);
+  
+  switch (cmd) {
+    case '/help':
+      handleInternalHelp(replyToken);
+      break;
+      
+    case '/jobs':
+      handleJobsList(args[0] || 'all', replyToken);
+      break;
+      
+    case '/job':
+      if (args[0]) {
+        handleJobDetail(args[0], replyToken);
+      } else {
+        replyMessage(replyToken, [{
+          type: 'text',
+          text: '❌ กรุณาระบุ Job ID\n\nตัวอย่าง: /job PDC-202510-0001'
+        }], true);
+      }
+      break;
+      
+    case '/pending':
+      handlePendingJobs(userId, replyToken);
+      break;
+      
+    case '/mytasks':
+      handleMyTasks(userId, replyToken);
+      break;
+      
+    case '/stats':
+      handleStats(replyToken);
+      break;
+      
+    default:
+      replyMessage(replyToken, [{
+        type: 'text',
+        text: '❌ ไม่รู้จักคำสั่ง: ' + cmd + '\n\nพิมพ์ /help เพื่อดูคำสั่งทั้งหมด'
+      }], true);
+  }
+}
+
+/**
+ * Internal Help Command
+ */
+function handleInternalHelp(replyToken) {
+  const response = {
+    type: 'text',
+    text: '📖 คำสั่งสำหรับพนักงาน:\n\n' +
+          '🔧 งาน:\n' +
+          '• /jobs [all|pending|progress] - ดูรายการงาน\n' +
+          '• /job [JOB_ID] - ดูรายละเอียดงาน\n' +
+          '• /pending - งานรอดำเนินการ\n' +
+          '• /mytasks - งานที่ assign ให้ฉัน\n\n' +
+          '📊 สถิติ:\n' +
+          '• /stats - ดูสถิติรวม\n\n' +
+          '❓ อื่นๆ:\n' +
+          '• /help - แสดงความช่วยเหลือ\n\n' +
+          '💡 ใช้ Rich Menu ได้เลยครับ!'
+  };
+  replyMessage(replyToken, [response], true);
+}
+
+/**
+ * Get Jobs List
+ */
+function handleJobsList(filter, replyToken) {
+  const sheet = getSheet(CONFIG.SHEETS.JOBS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
+  let jobs = [];
+  for (let i = 1; i < data.length; i++) {
+    const job = arrayToObject(headers, data[i]);
+    
+    if (filter === 'all' || 
+        (filter === 'pending' && job.status === CONFIG.STATUS.PENDING_APPROVAL) ||
+        (filter === 'progress' && job.status === CONFIG.STATUS.IN_PROGRESS)) {
+      jobs.push(job);
+    }
+  }
+  
+  jobs = jobs.slice(0, 10); // แสดง 10 งานแรก
+  
+  if (jobs.length === 0) {
+    replyMessage(replyToken, [{
+      type: 'text',
+      text: '📋 ไม่มีงานในระบบ'
+    }], true);
+    return;
+  }
+  
+  let text = `📋 รายการงาน (${filter}):\n\n`;
+  jobs.forEach((job, index) => {
+    text += `${index + 1}. ${job.job_id}\n`;
+    text += `   ${job.customer_name}\n`;
+    text += `   ${job.asset_desc}\n`;
+    text += `   สถานะ: ${job.status}\n`;
+    text += `   ${job.milestone}\n\n`;
+  });
+  
+  text += `แสดง ${jobs.length} งาน`;
+  
+  replyMessage(replyToken, [{ type: 'text', text: text }], true);
+}
+
+/**
+ * Get Job Detail
+ */
+function handleJobDetail(jobId, replyToken) {
+  const job = getJobById(jobId);
+  
+  if (!job) {
+    replyMessage(replyToken, [{
+      type: 'text',
+      text: `❌ ไม่พบงาน: ${jobId}`
+    }], true);
+    return;
+  }
+  
+  const items = getJobItems(jobId);
+  
+  let text = `📋 ${job.job_id}\n\n`;
+  text += `🏢 ${job.customer_name}\n`;
+  text += `⚙️ ${job.asset_desc}\n`;
+  text += `📊 ${job.status}\n`;
+  text += `🔄 ${job.milestone}\n`;
+  text += `💰 ฿${(job.quotation_amount || 0).toLocaleString()}\n`;
+  text += `📅 ${formatDate(job.eta_finish)}\n\n`;
+  
+  if (items.length > 0) {
+    text += `🔧 รายการซ่อม (${items.length}):\n`;
+    items.forEach((item, index) => {
+      text += `${index + 1}. ${item.title} - ฿${item.subtotal.toLocaleString()}\n`;
+    });
+  }
+  
+  replyMessage(replyToken, [{ type: 'text', text: text }], true);
+}
+
+/**
+ * Get Pending Jobs
+ */
+function handlePendingJobs(userId, replyToken) {
+  handleJobsList('pending', replyToken);
+}
+
+/**
+ * Get My Tasks
+ */
+function handleMyTasks(userId, replyToken) {
+  // TODO: Filter by assigned user
+  handleJobsList('progress', replyToken);
+}
+
+/**
+ * Get Stats
+ */
+function handleStats(replyToken) {
+  const sheet = getSheet(CONFIG.SHEETS.JOBS);
+  const data = sheet.getDataRange().getValues();
+  
+  let total = data.length - 1;
+  let pending = 0;
+  let progress = 0;
+  let completed = 0;
+  
+  for (let i = 1; i < data.length; i++) {
+    const status = data[i][9]; // status column
+    if (status === CONFIG.STATUS.PENDING_APPROVAL) pending++;
+    else if (status === CONFIG.STATUS.IN_PROGRESS) progress++;
+    else if (status === CONFIG.STATUS.COMPLETED) completed++;
+  }
+  
+  const text = `📊 สถิติรวม:\n\n` +
+               `📋 งานทั้งหมด: ${total}\n` +
+               `⏳ รออนุมัติ: ${pending}\n` +
+               `🔄 กำลังดำเนินการ: ${progress}\n` +
+               `✅ เสร็จสิ้น: ${completed}\n\n` +
+               `อัพเดท: ${new Date().toLocaleString('th-TH')}`;
+  
+  replyMessage(replyToken, [{ type: 'text', text: text }], true);
+}
+
+/**
+ * Check if user is internal (พนักงาน)
+ */
+function isInternalUser(userId) {
+  // ค้นหาใน Users sheet
+  const sheet = getSheet(CONFIG.SHEETS.USERS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const lineUserIdIndex = headers.indexOf('internal_line_user_id');
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][lineUserIdIndex] === userId) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -92,48 +364,108 @@ function handlePostbackEvent(event) {
   const action = data.action;
   const jobId = data.job_id;
   
+  // ตรวจสอบว่าเป็น Internal หรือ External OA
+  const isInternal = isInternalUser(userId);
+  
+  // ========================================
+  // Internal OA Postback Actions (พนักงาน)
+  // ========================================
+  if (isInternal) {
+    handleInternalPostback(action, jobId, userId, replyToken, data);
+  } 
+  // ========================================
+  // External OA Postback Actions (ลูกค้า)
+  // ========================================
+  else {
+    handleExternalPostback(action, jobId, userId, replyToken, data);
+  }
+}
+
+/**
+ * Handle Internal Postback (พนักงาน)
+ */
+function handleInternalPostback(action, jobId, userId, replyToken, data) {
+  switch (action) {
+    case 'assign_job':
+      handleAssignJob(jobId, userId, replyToken);
+      break;
+      
+    case 'start_job':
+      handleStartJob(jobId, userId, replyToken);
+      break;
+      
+    case 'complete_milestone':
+      handleCompleteMilestone(jobId, data.milestone, userId, replyToken);
+      break;
+      
+    case 'view_job':
+      handleViewJobInternal(jobId, replyToken);
+      break;
+      
+    case 'view_pdf':
+      handleViewPDF(userId, jobId, data.type, replyToken, true);
+      break;
+      
+    default:
+      Logger.log('Unknown internal postback action: ' + action);
+      replyMessage(replyToken, [{
+        type: 'text',
+        text: '❌ ไม่รู้จักคำสั่ง: ' + action
+      }], true);
+  }
+}
+
+/**
+ * Handle External Postback (ลูกค้า)
+ */
+function handleExternalPostback(action, jobId, userId, replyToken, data) {
   switch (action) {
     case 'approve':
       handleApproveQuotation(userId, jobId, replyToken);
       break;
+      
     case 'reject':
       handleRejectQuotation(userId, jobId, replyToken);
       break;
+      
     case 'view_pdf':
-      handleViewPDF(userId, jobId, data.type, replyToken);
+      handleViewPDF(userId, jobId, data.type, replyToken, false);
       break;
+      
     case 'view_photos':
       handleViewPhotos(userId, jobId, replyToken);
       break;
+      
+    case 'view_job':
+      handleViewJobExternal(jobId, replyToken);
+      break;
+      
     default:
-      Logger.log('Unknown postback action: ' + action);
+      Logger.log('Unknown external postback action: ' + action);
+      replyMessage(replyToken, [{
+        type: 'text',
+        text: '❌ ไม่รู้จักคำสั่ง: ' + action
+      }], false);
   }
 }
 
 /**
  * Handle Follow Event (เมื่อ Add Friend)
+ * Route to Internal or External handler
  */
 function handleFollowEvent(event) {
   const userId = event.source.userId;
+  const replyToken = event.replyToken;
   
-  logInfo('👋 New follower!', { userId: userId });
+  // ตรวจสอบว่าเป็น Internal หรือ External
+  const isInternal = isInternalUser(userId);
   
-  const welcomeMessage = {
-    type: 'text',
-    text: '🎉 ยินดีต้อนรับสู่ PDC Smart Motor Repair!\n\n' +
-          'เราพร้อมให้บริการซ่อมมอเตอร์คุณภาพสูง\n' +
-          'คุณสามารถติดตามสถานะงานซ่อมได้ตลอดเวลา\n\n' +
-          'พิมพ์ "ช่วยเหลือ" เพื่อดูคำสั่งทั้งหมด'
-  };
-  
-  try {
-    pushMessage(userId, [welcomeMessage], false);
-    logInfo('✅ Welcome message sent', { userId: userId });
-  } catch (error) {
-    logError('❌ Failed to send welcome message', { 
-      userId: userId, 
-      error: error.message 
-    });
+  if (isInternal) {
+    // พนักงาน Add Friend Internal OA
+    handleInternalFollowEvent(userId, replyToken);
+  } else {
+    // ลูกค้า Add Friend External OA
+    handleExternalFollowEvent(userId, replyToken);
   }
 }
 

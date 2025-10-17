@@ -88,17 +88,28 @@ function createJobWithItems(jobData) {
       total_amount: totalAmount
     });
     
-    // 6. TODO: Generate Quotation PDF
-    // const pdfUrl = generateQuotationPDF(jobId);
+    // 6. Generate Quotation PDF
+    let pdfUrl = null;
+    try {
+      pdfUrl = generateQuotationPDF(jobId);
+    } catch (error) {
+      logError('generateQuotationPDF failed', { jobId: jobId, error: error.message });
+    }
     
-    // 7. TODO: Send notification to customer
-    // notifyCustomerQuotation(jobId);
+    // 7. Send notification to customer
+    try {
+      notifyCustomerJobCreated(jobId, pdfUrl);
+      notifyInternalJobCreated(jobId);
+    } catch (error) {
+      logError('notification failed', { jobId: jobId, error: error.message });
+    }
     
     return {
       success: true,
       jobId: jobId,
       quotationNo: quotationNo,
       totalAmount: totalAmount,
+      pdfUrl: pdfUrl,
       message: 'สร้างงานสำเร็จ'
     };
     
@@ -433,8 +444,12 @@ function approveQuotation(jobId, userId, note) {
       approval_id: approvalId
     });
     
-    // แจ้งเตือนลูกค้า
-    notifyCustomerQuotationApproved(jobId);
+    // แจ้งเตือน Internal Team ว่าลูกค้าอนุมัติแล้ว
+    try {
+      notifyInternalQuotationApproved(jobId, userId);
+    } catch (error) {
+      logError('notification failed', { jobId: jobId, error: error.message });
+    }
     
     logInfo('Quotation approved', { jobId: jobId, userId: userId });
     
@@ -488,8 +503,13 @@ function rejectQuotation(jobId, userId, note) {
       approval_id: approvalId
     });
     
-    // แจ้งเตือนทีมภายใน
-    notifyInternalQuotationRejected(jobId, note);
+    // แจ้งเตือนทีมภายใน และลูกค้า
+    try {
+      notifyInternalQuotationRejected(jobId, note);
+      notifyCustomerQuotationRejected(jobId, note);
+    } catch (error) {
+      logError('notification failed', { jobId: jobId, error: error.message });
+    }
     
     logInfo('Quotation rejected', { jobId: jobId, userId: userId });
     
@@ -576,7 +596,11 @@ function updateJobMilestone(jobId, milestone, note, photos, userId) {
     }
     
     // แจ้งเตือนลูกค้า
-    notifyCustomerStatusUpdate(jobId, milestone);
+    try {
+      notifyCustomerStatusUpdate(jobId, milestone, note, photos);
+    } catch (error) {
+      logError('notification failed', { jobId: jobId, error: error.message });
+    }
     
     logInfo('Milestone updated', { jobId: jobId, milestone: milestone, userId: userId });
     

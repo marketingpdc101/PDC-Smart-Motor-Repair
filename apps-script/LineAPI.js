@@ -517,6 +517,363 @@ function formatCurrency(amount) {
 }
 
 /**
+ * สร้าง LIFF URL พร้อม Job ID
+ */
+function createLiffUrl(liffId, jobId) {
+  return `https://liff.line.me/${liffId}?jobId=${jobId}`;
+}
+
+// ========================================
+// Notification Functions
+// ========================================
+
+/**
+ * แจ้งเตือนลูกค้าว่างานถูกสร้างแล้ว พร้อมใบเสนอราคา
+ */
+function notifyCustomerJobCreated(jobId, quotationPdfUrl) {
+  try {
+    const job = getJobById(jobId);
+    if (!job || !job.line_user_id) return false;
+    
+    const items = getJobItems(jobId);
+    const totalAmount = job.grand_total || 0;
+    
+    // สร้าง LIFF URL สำหรับเปิดใบเสนอราคา
+    const quotationLiffUrl = createLiffUrl(CONFIG.LIFF.QUOTATION, jobId);
+    
+    const messages = [
+      {
+        type: 'text',
+        text: `สวัสดีครับคุณ ${job.customer_name}\n\n✅ เราได้รับงานซ่อมของท่านแล้ว\nหมายเลขงาน: ${job.job_id}\n\n📄 กรุณาตรวจสอบใบเสนอราคาด้านล่าง`
+      },
+      createQuotationFlexMessage(job, items, totalAmount)
+    ];
+    
+    // เพิ่มปุ่มเปิด LIFF
+    messages.push({
+      type: 'template',
+      altText: 'เปิดใบเสนอราคา',
+      template: {
+        type: 'buttons',
+        text: '📄 ใบเสนอราคา',
+        actions: [
+          {
+            type: 'uri',
+            label: '📄 เปิดใบเสนอราคา',
+            uri: quotationLiffUrl
+          }
+        ]
+      }
+    });
+    
+    if (quotationPdfUrl) {
+      messages.push({
+        type: 'text',
+        text: `📥 ดาวน์โหลด PDF: ${quotationPdfUrl}`
+      });
+    }
+    
+    return pushMessage(job.line_user_id, messages, false); // External OA
+  } catch (error) {
+    logError('notifyCustomerJobCreated', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือน Internal Team เมื่อมีงานใหม่
+ */
+function notifyInternalJobCreated(jobId) {
+  try {
+    const job = getJobById(jobId);
+    if (!job) return false;
+    
+    // ส่งไปที่ Group Chat หรือ Admin LINE ID
+    const adminLineId = CONFIG.LINE.ADMIN_GROUP_ID || CONFIG.LINE.ADMIN_LINE_ID;
+    if (!adminLineId) return false;
+    
+    const message = {
+      type: 'text',
+      text: `🔔 งานใหม่เข้ามา!\n\n` +
+            `หมายเลขงาน: ${job.job_id}\n` +
+            `ลูกค้า: ${job.customer_name}\n` +
+            `บริษัท: ${job.company || '-'}\n` +
+            `มอเตอร์: ${job.asset_desc}\n` +
+            `ยอดรวม: ${formatCurrency(job.grand_total)}\n\n` +
+            `📋 รอการอนุมัติใบเสนอราคา`
+    };
+    
+    return pushMessage(adminLineId, message, true); // Internal OA
+  } catch (error) {
+    logError('notifyInternalJobCreated', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือนลูกค้าเมื่อมีการอัพเดทสถานะงาน
+ */
+function notifyCustomerStatusUpdate(jobId, milestone, note, photos) {
+  try {
+    const job = getJobById(jobId);
+    if (!job || !job.line_user_id) return false;
+    
+    // สร้าง LIFF URL สำหรับดูสถานะ
+    const statusLiffUrl = createLiffUrl(CONFIG.LIFF.STATUS_UPDATE, jobId);
+    
+    const messages = [
+      createStatusUpdateFlexMessage(job, milestone, note, photos),
+      {
+        type: 'template',
+        altText: 'ดูรายละเอียดงาน',
+        template: {
+          type: 'buttons',
+          text: '📱 เปิดดูรายละเอียด',
+          actions: [
+            {
+              type: 'uri',
+              label: '🔍 ดูสถานะงาน',
+              uri: statusLiffUrl
+            }
+          ]
+        }
+      }
+    ];
+    
+    return pushMessage(job.line_user_id, messages, false); // External OA
+  } catch (error) {
+    logError('notifyCustomerStatusUpdate', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือน Internal Team เมื่อลูกค้าอนุมัติใบเสนอราคา
+ */
+function notifyInternalQuotationApproved(jobId, approvedBy) {
+  try {
+    const job = getJobById(jobId);
+    if (!job) return false;
+    
+    const adminLineId = CONFIG.LINE.ADMIN_GROUP_ID || CONFIG.LINE.ADMIN_LINE_ID;
+    if (!adminLineId) return false;
+    
+    // สร้าง LIFF URLs
+    const workOrderLiffUrl = createLiffUrl(CONFIG.LIFF.WORK_ORDER, jobId);
+    const statusUpdateLiffUrl = createLiffUrl(CONFIG.LIFF.STATUS_UPDATE, jobId);
+    
+    const messages = [
+      {
+        type: 'text',
+        text: `✅ ลูกค้าอนุมัติใบเสนอราคาแล้ว!\n\n` +
+              `หมายเลขงาน: ${job.job_id}\n` +
+              `ลูกค้า: ${job.customer_name}\n` +
+              `ยอดรวม: ${formatCurrency(job.grand_total)}\n` +
+              `PO Number: ${job.po_number || '-'}\n\n` +
+              `📌 สามารถเริ่มงานได้เลย`
+      },
+      {
+        type: 'template',
+        altText: 'เปิดใบสั่งงาน',
+        template: {
+          type: 'buttons',
+          text: '📋 จัดการงาน',
+          actions: [
+            {
+              type: 'uri',
+              label: '📋 เปิดใบสั่งงาน',
+              uri: workOrderLiffUrl
+            },
+            {
+              type: 'uri',
+              label: '🔔 อัพเดทสถานะ',
+              uri: statusUpdateLiffUrl
+            }
+          ]
+        }
+      }
+    ];
+    
+    return pushMessage(adminLineId, messages, true); // Internal OA
+  } catch (error) {
+    logError('notifyInternalQuotationApproved', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือนลูกค้าเมื่องานเสร็จสมบูรณ์ พร้อมส่งมอบ
+ */
+function notifyCustomerJobCompleted(jobId, pdfUrl) {
+  try {
+    const job = getJobById(jobId);
+    if (!job || !job.line_user_id) return false;
+    
+    // ดึงผลทดสอบ
+    const testResult = getLatestTestResult(jobId);
+    
+    // สร้าง LIFF URL สำหรับดูรายงานสุดท้าย
+    const finalReportLiffUrl = createLiffUrl(CONFIG.LIFF.FINAL_REPORT, jobId);
+    
+    const messages = [
+      {
+        type: 'text',
+        text: `🎉 งานซ่อมเสร็จสมบูรณ์แล้ว!\n\n` +
+              `หมายเลขงาน: ${job.job_id}\n` +
+              `มอเตอร์: ${job.asset_desc}\n\n` +
+              `✅ ผ่านการทดสอบไฟฟ้าเรียบร้อย\n` +
+              `📦 พร้อมส่งมอบแล้ว`
+      },
+      createFinalReportFlexMessage(job, testResult),
+      {
+        type: 'template',
+        altText: 'ดูรายงานสุดท้าย',
+        template: {
+          type: 'buttons',
+          text: '📊 ดูรายงานสุดท้าย',
+          actions: [
+            {
+              type: 'uri',
+              label: '📊 เปิดรายงาน',
+              uri: finalReportLiffUrl
+            }
+          ]
+        }
+      }
+    ];
+    
+    if (pdfUrl) {
+      messages.push({
+        type: 'text',
+        text: `📥 ดาวน์โหลด PDF: ${pdfUrl}`
+      });
+    }
+    
+    return pushMessage(job.line_user_id, messages, false); // External OA
+  } catch (error) {
+    logError('notifyCustomerJobCompleted', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือน Internal Team เมื่อทดสอบไฟฟ้าไม่ผ่าน
+ */
+function notifyInternalTestFailed(jobId, note) {
+  try {
+    const job = getJobById(jobId);
+    if (!job) return false;
+    
+    const adminLineId = CONFIG.LINE.ADMIN_GROUP_ID || CONFIG.LINE.ADMIN_LINE_ID;
+    if (!adminLineId) return false;
+    
+    const message = {
+      type: 'text',
+      text: `⚠️ งานทดสอบไฟฟ้าไม่ผ่าน!\n\n` +
+            `หมายเลขงาน: ${job.job_id}\n` +
+            `ลูกค้า: ${job.customer_name}\n` +
+            `มอเตอร์: ${job.asset_desc}\n\n` +
+            `หมายเหตุ: ${note || 'ไม่ระบุ'}\n\n` +
+            `⚡ ต้องตรวจสอบและแก้ไขเพิ่มเติม`
+    };
+    
+    return pushMessage(adminLineId, message, true); // Internal OA
+  } catch (error) {
+    logError('notifyInternalTestFailed', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือนลูกค้าเมื่อใบเสนอราคาถูกปฏิเสธ
+ */
+function notifyCustomerQuotationRejected(jobId, note) {
+  try {
+    const job = getJobById(jobId);
+    if (!job || !job.line_user_id) return false;
+    
+    const message = {
+      type: 'text',
+      text: `ขอบคุณที่ให้ความสนใจครับ\n\n` +
+            `หมายเลขงาน: ${job.job_id}\n` +
+            `เราได้รับการปฏิเสธใบเสนอราคาแล้ว\n\n` +
+            (note ? `หมายเหตุ: ${note}\n\n` : '') +
+            `หากมีข้อสงสัยหรือต้องการปรับเปลี่ยนใบเสนอราคา\n` +
+            `กรุณาติดต่อเราได้ที่ 📞 02-XXX-XXXX`
+    };
+    
+    return pushMessage(job.line_user_id, message, false); // External OA
+  } catch (error) {
+    logError('notifyCustomerQuotationRejected', error);
+    return false;
+  }
+}
+
+/**
+ * แจ้งเตือน Internal Team เมื่อลูกค้าปฏิเสธใบเสนอราคา
+ */
+function notifyInternalQuotationRejected(jobId, note) {
+  try {
+    const job = getJobById(jobId);
+    if (!job) return false;
+    
+    const adminLineId = CONFIG.LINE.ADMIN_GROUP_ID || CONFIG.LINE.ADMIN_LINE_ID;
+    if (!adminLineId) return false;
+    
+    const message = {
+      type: 'text',
+      text: `❌ ลูกค้าปฏิเสธใบเสนอราคา\n\n` +
+            `หมายเลขงาน: ${job.job_id}\n` +
+            `ลูกค้า: ${job.customer_name}\n` +
+            `ยอดรวม: ${formatCurrency(job.grand_total)}\n\n` +
+            `เหตุผล: ${note || 'ไม่ระบุ'}\n\n` +
+            `📝 ติดต่อลูกค้าเพื่อปรับใบเสนอราคา`
+    };
+    
+    return pushMessage(adminLineId, message, true); // Internal OA
+  } catch (error) {
+    logError('notifyInternalQuotationRejected', error);
+    return false;
+  }
+}
+
+/**
+ * ดึงผลทดสอบล่าสุด
+ */
+function getLatestTestResult(jobId) {
+  try {
+    const sheet = getSheet(CONFIG.SHEETS.TEST_RESULTS);
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // หา test result ล่าสุดของ job นี้
+    for (let i = data.length - 1; i > 0; i--) {
+      const row = arrayToObject(headers, data[i]);
+      if (row.job_id === jobId) {
+        return {
+          voltage_v: row.voltage_v || 0,
+          current_a: row.current_a || 0,
+          rpm: row.rpm || 0,
+          ir_mohm: row.insulation_resistance_mohm || 0,
+          vibration_mm_s: row.vibration_mm_s || 0,
+          temperature_c: row.temperature_c || 0,
+          pass_fail: row.test_result || 'N/A'
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    logError('getLatestTestResult', error);
+    return null;
+  }
+}
+
+// ========================================
+// Test Functions
+// ========================================
+
+/**
  * ทดสอบ LINE API
  */
 function testLineAPI() {
