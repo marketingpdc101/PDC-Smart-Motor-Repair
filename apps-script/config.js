@@ -31,6 +31,7 @@ const CONFIG = {
   // LIFF (LINE Front-end Framework) IDs
   // ========================================
   LIFF: {
+    JOB_CREATION: '2008297943-J69z7PPp',       // สร้างงานใหม่ (Planner)
     QUOTATION: '2008297943-16G8DPPz',          // ใบเสนอราคา
     WORK_ORDER: '2008297943-goJa0bbw',         // ใบสั่งงาน (ดูอย่างเดียว)
     STATUS_UPDATE: '2008297943-n63AYqqD',      // อัพเดทสถานะ
