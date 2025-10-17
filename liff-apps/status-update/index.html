@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDC - อัพเดทสถานะงาน</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #FBBC04;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        select, textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .milestone-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .milestone-option:hover {
+            border-color: #4285F4;
+            background: #f8f9fa;
+        }
+
+        .milestone-option.selected {
+            border-color: #34A853;
+            background: #e8f5e9;
+        }
+
+        .photo-upload {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .photo-preview img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #FBBC04;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 อัพเดทสถานะงาน</h1>
+
+        <div id="content">
+            <div class="form-group">
+                <label>Job ID</label>
+                <input type="text" id="jobId" value="PDC-202510-0001" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>สถานะงาน (Milestone)</label>
+                <select id="milestone">
+                    <option value="">-- เลือกสถานะ --</option>
+                    <option value="Received">รับงาน</option>
+                    <option value="Inspection">ตรวจสอบเบื้องต้น</option>
+                    <option value="Disassembly">ถอดแยกชิ้นส่วน</option>
+                    <option value="Burnout">เผาขดลวด</option>
+                    <option value="Core">ทำ Core</option>
+                    <option value="Rewinding">พันขดลวดใหม่</option>
+                    <option value="Varnish">เคลือบ Varnish</option>
+                    <option value="Assembly">ประกอบ</option>
+                    <option value="Balancing">ถ่วงแบลานซ์</option>
+                    <option value="Painting">พ่นสี</option>
+                    <option value="QC">ตรวจสอบคุณภาพ</option>
+                    <option value="Final_Test">ทดสอบไฟฟ้า</option>
+                    <option value="Packing">บรรจุหีบห่อ</option>
+                    <option value="Delivery">พร้อมส่งมอบ</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>หมายเหตุ</label>
+                <textarea id="note" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>รูปภาพ (สูงสุด 3 รูป)</label>
+                <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
+                    📷 แตะเพื่อถ่ายรูป/เลือกรูป
+                </div>
+                <input type="file" id="photoInput" accept="image/*" multiple style="display: none;" 
+                       onchange="handlePhotos(this.files)">
+                <div class="photo-preview" id="photoPreview"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="updateStatus()">
+                ✅ อัพเดทสถานะ
+            </button>
+
+            <button class="btn btn-secondary" onclick="liff.closeWindow()">
+                ❌ ยกเลิก
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let selectedPhotos = [];
+
+        // Initialize LIFF
+        window.onload = function() {
+            liff.init({
+                liffId: 'YOUR_LIFF_ID_HERE'
+            }).then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    // Load job_id from URL if available
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const jobId = urlParams.get('job_id');
+                    if (jobId) {
+                        document.getElementById('jobId').value = jobId;
+                    }
+                }
+            }).catch((err) => {
+                alert('Error initializing LIFF: ' + err.message);
+            });
+        };
+
+        // Handle photo selection
+        function handlePhotos(files) {
+            if (files.length > 3) {
+                alert('เลือกได้สูงสุด 3 รูป');
+                return;
+            }
+
+            selectedPhotos = [];
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = '';
+
+            Array.from(files).slice(0, 3).forEach((file, index) => {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    preview.appendChild(img);
+
+                    selectedPhotos.push({
+                        name: file.name,
+                        data: e.target.result.split(',')[1],  // Base64 data
+                        type: file.type
+                    });
+                };
+
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Update status
+        async function updateStatus() {
+            const jobId = document.getElementById('jobId').value;
+            const milestone = document.getElementById('milestone').value;
+            const note = document.getElementById('note').value;
+
+            if (!milestone) {
+                alert('กรุณาเลือกสถานะ');
+                return;
+            }
+
+            try {
+                // Get user profile
+                const profile = await liff.getProfile();
+
+                // Call Web App to update status
+                const response = await fetch('YOUR_WEB_APP_URL?action=update_status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        job_id: jobId,
+                        milestone: milestone,
+                        note: note,
+                        photos: selectedPhotos,
+                        actor_name: profile.displayName,
+                        actor_id: profile.userId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update status');
+                }
+
+                const result = await response.json();
+
+                // Send success message and close
+                liff.sendMessages([{
+                    type: 'text',
+                    text: '✅ อัพเดทสถานะสำเร็จ!\n' +
+                          'Job ID: ' + jobId + '\n' +
+                          'สถานะใหม่: ' + getMilestoneText(milestone)
+                }]).then(() => {
+                    liff.closeWindow();
+                });
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Get milestone display text
+        function getMilestoneText(milestone) {
+            const map = {
+                'Received': 'รับงาน',
+                'Inspection': 'ตรวจสอบเบื้องต้น',
+                'Disassembly': 'ถอดแยกชิ้นส่วน',
+                'Burnout': 'เผาขดลวด',
+                'Core': 'ทำ Core',
+                'Rewinding': 'พันขดลวดใหม่',
+                'Varnish': 'เคลือบ Varnish',
+                'Assembly': 'ประกอบ',
+                'Balancing': 'ถ่วงแบลานซ์',
+                'Painting': 'พ่นสี',
+                'QC': 'ตรวจสอบคุณภาพ',
+                'Final_Test': 'ทดสอบไฟฟ้า',
+                'Packing': 'บรรจุหีบห่อ',
+                'Delivery': 'พร้อมส่งมอบ'
+            };
+            return map[milestone] || milestone;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDC - ใบเสนอราคา</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #4285F4;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .job-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .value {
+            color: #333;
+        }
+
+        .items-section {
+            margin: 20px 0;
+        }
+
+        .item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .item-price {
+            color: #EA4335;
+            font-weight: 600;
+        }
+
+        .item-detail {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .item-input {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .total-section {
+            background: #e8f0fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .total-row.grand {
+            font-size: 20px;
+            font-weight: 700;
+            color: #EA4335;
+            padding-top: 10px;
+            border-top: 2px solid #4285F4;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #34A853;
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: #2d8f47;
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fce4e4;
+            color: #cc0000;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 สร้างใบเสนอราคา</h1>
+
+        <div id="loading" class="loading">
+            กำลังโหลดข้อมูล...
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="job-info">
+                <div class="info-row">
+                    <span class="label">Job ID:</span>
+                    <span class="value" id="jobId">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">ลูกค้า:</span>
+                    <span class="value" id="customerName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">เครื่องจักร:</span>
+                    <span class="value" id="assetDesc">-</span>
+                </div>
+            </div>
+
+            <div class="items-section">
+                <h3>รายการซ่อม</h3>
+                <div id="itemsList"></div>
+            </div>
+
+            <div class="total-section">
+                <div class="total-row">
+                    <span>รวม:</span>
+                    <span id="subtotal">฿0.00</span>
+                </div>
+                <div class="total-row">
+                    <span>VAT 7%:</span>
+                    <span id="vat">฿0.00</span>
+                </div>
+                <div class="total-row grand">
+                    <span>ยอดรวมทั้งสิ้น:</span>
+                    <span id="total">฿0.00</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="generateQuotation()">
+                📄 สร้างใบเสนอราคา
+            </button>
+
+            <button class="btn btn-secondary" onclick="liff.closeWindow()">
+                ❌ ยกเลิก
+            </button>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        let jobData = null;
+        let items = [];
+
+        // Initialize LIFF
+        window.onload = function() {
+            liff.init({
+                liffId: 'YOUR_LIFF_ID_HERE' // แก้ไขใน Config.gs
+            }).then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    loadData();
+                }
+            }).catch((err) => {
+                showError('Error initializing LIFF: ' + err.message);
+            });
+        };
+
+        // Load job data
+        async function loadData() {
+            try {
+                // Get job_id from URL parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const jobId = urlParams.get('job_id') || 'PDC-202510-0001'; // Default for testing
+
+                // Call Web App to get data
+                const response = await fetch(
+                    'YOUR_WEB_APP_URL?action=get_job&job_id=' + jobId
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+
+                const data = await response.json();
+                jobData = data.job;
+                items = data.items;
+
+                displayData();
+            } catch (error) {
+                showError('Error loading data: ' + error.message);
+            }
+        }
+
+        // Display data
+        function displayData() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            document.getElementById('jobId').textContent = jobData.job_id;
+            document.getElementById('customerName').textContent = jobData.customer_name;
+            document.getElementById('assetDesc').textContent = jobData.asset_desc;
+
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-title">${index + 1}. ${item.title}</span>
+                        <span class="item-price">฿<span id="item-price-${index}">0.00</span></span>
+                    </div>
+                    <div class="item-detail">${item.tech_detail}</div>
+                    <div class="item-input">
+                        <input type="number" placeholder="จำนวน" value="${item.qty || 1}" 
+                               id="qty-${index}" min="1" onchange="calculateItem(${index})">
+                        <input type="number" placeholder="ราคา/หน่วย" value="${item.unit_price || 0}" 
+                               id="price-${index}" min="0" step="0.01" onchange="calculateItem(${index})">
+                    </div>
+                `;
+                itemsList.appendChild(itemDiv);
+
+                calculateItem(index);
+            });
+
+            calculateTotal();
+        }
+
+        // Calculate item price
+        function calculateItem(index) {
+            const qty = parseFloat(document.getElementById(`qty-${index}`).value) || 0;
+            const price = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+            const total = qty * price;
+
+            document.getElementById(`item-price-${index}`).textContent = total.toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            calculateTotal();
+        }
+
+        // Calculate total
+        function calculateTotal() {
+            let subtotal = 0;
+
+            items.forEach((item, index) => {
+                const qty = parseFloat(document.getElementById(`qty-${index}`).value) || 0;
+                const price = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+                subtotal += qty * price;
+            });
+
+            const vat = subtotal * 0.07;
+            const total = subtotal + vat;
+
+            document.getElementById('subtotal').textContent = '฿' + subtotal.toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            document.getElementById('vat').textContent = '฿' + vat.toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            document.getElementById('total').textContent = '฿' + total.toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Generate quotation
+        async function generateQuotation() {
+            try {
+                // Collect updated items data
+                const updatedItems = items.map((item, index) => ({
+                    ...item,
+                    qty: parseFloat(document.getElementById(`qty-${index}`).value),
+                    unit_price: parseFloat(document.getElementById(`price-${index}`).value),
+                    subtotal: parseFloat(document.getElementById(`qty-${index}`).value) * 
+                             parseFloat(document.getElementById(`price-${index}`).value)
+                }));
+
+                // Call Web App to generate PDF
+                const response = await fetch('YOUR_WEB_APP_URL?action=generate_quotation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        job_id: jobData.job_id,
+                        items: updatedItems
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate quotation');
+                }
+
+                const result = await response.json();
+
+                // Show success and close
+                liff.sendMessages([{
+                    type: 'text',
+                    text: '✅ สร้างใบเสนอราคาสำเร็จ!\nJob ID: ' + jobData.job_id
+                }]).then(() => {
+                    liff.closeWindow();
+                });
+
+            } catch (error) {
+                showError('Error generating quotation: ' + error.message);
+            }
+        }
+
+        // Show error
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

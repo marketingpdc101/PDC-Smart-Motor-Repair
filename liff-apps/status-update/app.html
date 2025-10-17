@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDC - อัพเดทสถานะงาน</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .job-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #11998e;
+        }
+
+        .job-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .customer-name {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .progress-section {
+            margin: 20px 0;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .milestone {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .milestone:hover {
+            border-color: #11998e;
+            transform: translateX(5px);
+        }
+
+        .milestone.completed {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .milestone.current {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .milestone-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+            background: #e9ecef;
+        }
+
+        .milestone.completed .milestone-icon {
+            background: #28a745;
+            color: white;
+        }
+
+        .milestone.current .milestone-icon {
+            background: #ffc107;
+        }
+
+        .milestone-content {
+            flex: 1;
+        }
+
+        .milestone-name {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .milestone-date {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .photo-upload {
+            margin-top: 10px;
+        }
+
+        .photo-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .photo-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .photo-item button {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-file {
+            background: #6c757d;
+            color: white;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 อัพเดทสถานะงาน</h1>
+            <p>P.D.C Smart Motor Repair</p>
+        </div>
+
+        <div class="content">
+            <div class="job-card">
+                <div class="job-number" id="jobNumber">Loading...</div>
+                <div class="customer-name" id="customerName"></div>
+            </div>
+
+            <div class="progress-section">
+                <div class="section-title">🔄 ความคืบหน้า</div>
+                <div id="milestones">
+                    <!-- Milestones will be inserted here -->
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">✏️ อัพเดทสถานะใหม่</div>
+                
+                <div class="form-group">
+                    <label>ขั้นตอนปัจจุบัน:</label>
+                    <select id="milestoneSelect">
+                        <option value="">-- เลือกขั้นตอน --</option>
+                        <option value="Received">รับงาน</option>
+                        <option value="Inspection">ตรวจสอบ</option>
+                        <option value="Disassembly">ถอดแยกชิ้นส่วน</option>
+                        <option value="Burnout">เผาขดลวด</option>
+                        <option value="Core">ทำ Core</option>
+                        <option value="Rewinding">พันขดลวดใหม่</option>
+                        <option value="Varnish">เคลือบ Varnish</option>
+                        <option value="Assembly">ประกอบ</option>
+                        <option value="Balancing">ถ่วงแบลานซ์</option>
+                        <option value="Painting">พ่นสี</option>
+                        <option value="QC">ตรวจสอบคุณภาพ</option>
+                        <option value="Final_Test">ทดสอบไฟฟ้า</option>
+                        <option value="Packing">บรรจุหีบห่อ</option>
+                        <option value="Delivery">ส่งมอบ</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>รายละเอียด / หมายเหตุ:</label>
+                    <textarea id="noteText" placeholder="ระบุรายละเอียดการทำงาน..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>อัพโหลดรูปภาพ (ถ้ามี):</label>
+                    <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
+                    <button class="btn btn-file" onclick="document.getElementById('photoInput').click()">
+                        📷 เลือกรูปภาพ
+                    </button>
+                    <div class="photo-preview" id="photoPreview"></div>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitUpdate()">
+                    💾 บันทึกการอัพเดท
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let jobData = null;
+        let userId = null;
+        let selectedPhotos = [];
+
+        // Milestone names in Thai
+        const milestoneNames = {
+            'Received': 'รับงาน',
+            'Inspection': 'ตรวจสอบ',
+            'Disassembly': 'ถอดแยกชิ้นส่วน',
+            'Burnout': 'เผาขดลวด',
+            'Core': 'ทำ Core',
+            'Rewinding': 'พันขดลวดใหม่',
+            'Varnish': 'เคลือบ Varnish',
+            'Assembly': 'ประกอบ',
+            'Balancing': 'ถ่วงแบลานซ์',
+            'Painting': 'พ่นสี',
+            'QC': 'ตรวจสอบคุณภาพ',
+            'Final_Test': 'ทดสอบไฟฟ้า',
+            'Packing': 'บรรจุหีบห่อ',
+            'Delivery': 'ส่งมอบ'
+        };
+
+        // Initialize LIFF
+        async function initializeLIFF() {
+            try {
+                await liff.init({ liffId: '2008297943-n63AYqqD' });
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                const profile = await liff.getProfile();
+                userId = profile.userId;
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const jobId = urlParams.get('jobId');
+
+                if (jobId) {
+                    await loadJobData(jobId);
+                }
+
+            } catch (error) {
+                console.error('LIFF Error:', error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        // Load job data
+        async function loadJobData(jobId) {
+            try {
+                const response = await fetch(`https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec?action=getJob&jobId=${jobId}`);
+                jobData = await response.json();
+
+                document.getElementById('jobNumber').textContent = jobData.jobNumber;
+                document.getElementById('customerName').textContent = jobData.customerName;
+
+                displayMilestones();
+
+            } catch (error) {
+                console.error('Load Error:', error);
+                alert('ไม่สามารถโหลดข้อมูลได้');
+            }
+        }
+
+        // Display milestones
+        function displayMilestones() {
+            const container = document.getElementById('milestones');
+            const milestones = Object.keys(milestoneNames);
+            const currentIndex = jobData.currentMilestoneIndex || 0;
+
+            container.innerHTML = milestones.map((milestone, index) => {
+                const isCompleted = index < currentIndex;
+                const isCurrent = index === currentIndex;
+                const completedDate = jobData.milestones?.[milestone];
+
+                return `
+                    <div class="milestone ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}">
+                        <div class="milestone-icon">
+                            ${isCompleted ? '✓' : isCurrent ? '⏳' : (index + 1)}
+                        </div>
+                        <div class="milestone-content">
+                            <div class="milestone-name">${milestoneNames[milestone]}</div>
+                            ${completedDate ? `<div class="milestone-date">${new Date(completedDate).toLocaleDateString('th-TH')}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Handle photo selection
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            selectedPhotos = Array.from(e.target.files);
+            displayPhotoPreview();
+        });
+
+        // Display photo preview
+        function displayPhotoPreview() {
+            const container = document.getElementById('photoPreview');
+            container.innerHTML = selectedPhotos.map((file, index) => `
+                <div class="photo-item">
+                    <img src="${URL.createObjectURL(file)}" alt="Preview">
+                    <button onclick="removePhoto(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Remove photo
+        function removePhoto(index) {
+            selectedPhotos.splice(index, 1);
+            displayPhotoPreview();
+        }
+
+        // Submit update
+        async function submitUpdate() {
+            const milestone = document.getElementById('milestoneSelect').value;
+            const note = document.getElementById('noteText').value;
+
+            if (!milestone) {
+                alert('กรุณาเลือกขั้นตอนที่ต้องการอัพเดท');
+                return;
+            }
+
+            try {
+                // Upload photos first
+                const photoUrls = await uploadPhotos();
+
+                const response = await fetch('https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'updateStatus',
+                        jobId: jobData.jobId,
+                        milestone: milestone,
+                        note: note,
+                        photos: photoUrls,
+                        userId: userId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ อัพเดทสถานะสำเร็จ!');
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Submit Error:', error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        // Upload photos (placeholder - implement actual upload)
+        async function uploadPhotos() {
+            // TODO: Implement photo upload to Google Drive
+            return [];
+        }
+
+        window.onload = initializeLIFF;
+    </script>
+</body>
+</html>

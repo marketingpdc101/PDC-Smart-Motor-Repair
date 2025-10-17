@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDC Rich Menu Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="color"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input[type="color"] {
+            height: 50px;
+            cursor: pointer;
+        }
+
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        canvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-internal {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 5px solid #2196f3;
+        }
+
+        .info h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .info p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+        }
+
+        .preset-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PDC Rich Menu Generator</h1>
+        <p class="subtitle">สร้างรูป Rich Menu สำหรับ LINE Official Account แบบง่ายๆ</p>
+
+        <div class="preset-buttons">
+            <button class="preset-btn active" onclick="applyPreset('customer')">🎨 ธีมลูกค้า (น้ำเงิน)</button>
+            <button class="preset-btn" onclick="applyPreset('staff')">🎨 ธีมพนักงาน (เขียว)</button>
+            <button class="preset-btn" onclick="applyPreset('premium')">✨ ธีมพรีเมียม (ทอง)</button>
+            <button class="preset-btn" onclick="applyPreset('dark')">🌙 ธีมมืด</button>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>🎨 สีพื้นหลัง</label>
+                <input type="color" id="bgColor" value="#0066FF">
+            </div>
+            <div class="control-group">
+                <label>✏️ สีข้อความ</label>
+                <input type="color" id="textColor" value="#FFFFFF">
+            </div>
+            <div class="control-group">
+                <label>🖊️ ฟอนต์</label>
+                <select id="fontFamily">
+                    <option value="Sarabun">Sarabun (แนะนำ)</option>
+                    <option value="Prompt">Prompt</option>
+                    <option value="Kanit">Kanit</option>
+                    <option value="Mitr">Mitr</option>
+                    <option value="Arial">Arial</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>📏 ขนาดฟอนต์</label>
+                <input type="text" id="fontSize" value="56" placeholder="56">
+            </div>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="richMenuCanvas" width="2500" height="1686"></canvas>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-generate" onclick="generateExternalMenu()">
+                🎨 สร้างเมนูลูกค้า (External)
+            </button>
+            <button class="btn-internal" onclick="generateInternalMenu()">
+                👥 สร้างเมนูพนักงาน (Internal)
+            </button>
+            <button class="btn-download" onclick="downloadImage()">
+                💾 ดาวน์โหลดรูป
+            </button>
+        </div>
+
+        <div class="info">
+            <h3>📌 วิธีใช้งาน</h3>
+            <p>
+                1. เลือกธีมสีที่ต้องการ หรือปรับแต่งเองได้<br>
+                2. กดปุ่ม "สร้างเมนูลูกค้า" หรือ "สร้างเมนูพนักงาน"<br>
+                3. กดปุ่ม "ดาวน์โหลดรูป" เพื่อบันทึกไฟล์<br>
+                4. นำไฟล์ไป Upload ผ่าน LINE Developers Console หรือใช้ curl command<br>
+                <br>
+                <strong>📐 ขนาดรูป:</strong> 2500 x 1686 pixels (ตามมาตรฐาน LINE)<br>
+                <strong>💾 รูปแบบ:</strong> PNG
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // โหลด Google Fonts
+        const link = document.createElement('link');
+        link.href = 'https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Prompt:wght@400;600;700&family=Kanit:wght@400;600;700&family=Mitr:wght@400;600;700&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+
+        let currentMenuType = 'external';
+
+        // Color Presets
+        const presets = {
+            customer: {
+                bgColor: '#0066FF',
+                textColor: '#FFFFFF'
+            },
+            staff: {
+                bgColor: '#00A86B',
+                textColor: '#FFFFFF'
+            },
+            premium: {
+                bgColor: '#D4AF37',
+                textColor: '#1A1A1A'
+            },
+            dark: {
+                bgColor: '#1A1A2E',
+                textColor: '#EAEAEA'
+            }
+        };
+
+        function applyPreset(presetName) {
+            const preset = presets[presetName];
+            document.getElementById('bgColor').value = preset.bgColor;
+            document.getElementById('textColor').value = preset.textColor;
+
+            // Update active button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Regenerate menu
+            if (currentMenuType === 'external') {
+                generateExternalMenu();
+            } else {
+                generateInternalMenu();
+            }
+        }
+
+        function drawRichMenu(menuItems) {
+            const canvas = document.getElementById('richMenuCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Get settings
+            const bgColor = document.getElementById('bgColor').value;
+            const textColor = document.getElementById('textColor').value;
+            const fontFamily = document.getElementById('fontFamily').value;
+            const fontSize = parseInt(document.getElementById('fontSize').value) || 56;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid settings
+            const cols = 2;
+            const rows = 2;
+            const cellWidth = canvas.width / cols;
+            const cellHeight = canvas.height / rows;
+
+            // Draw grid lines
+            ctx.strokeStyle = textColor;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 4;
+
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(cellWidth, 0);
+            ctx.lineTo(cellWidth, canvas.height);
+            ctx.stroke();
+
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(0, cellHeight);
+            ctx.lineTo(canvas.width, cellHeight);
+            ctx.stroke();
+
+            ctx.globalAlpha = 1;
+
+            // Draw menu items
+            ctx.fillStyle = textColor;
+            ctx.font = `700 ${fontSize}px ${fontFamily}, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            menuItems.forEach((item, index) => {
+                const col = index % cols;
+                const row = Math.floor(index / cols);
+                const x = col * cellWidth + cellWidth / 2;
+                const y = row * cellHeight + cellHeight / 2;
+
+                // Draw emoji (larger)
+                ctx.font = `${fontSize * 2.5}px Arial`;
+                ctx.fillText(item.emoji, x, y - fontSize * 1.2);
+
+                // Draw text
+                ctx.font = `700 ${fontSize}px ${fontFamily}, sans-serif`;
+                ctx.fillText(item.text, x, y + fontSize * 1.2);
+            });
+
+            // Add subtle gradient overlay
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add brand watermark
+            ctx.fillStyle = textColor;
+            ctx.globalAlpha = 0.3;
+            ctx.font = '700 40px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('P.D.C Motor Service', canvas.width - 40, canvas.height - 40);
+            ctx.globalAlpha = 1;
+        }
+
+        function generateExternalMenu() {
+            currentMenuType = 'external';
+            const menuItems = [
+                { emoji: '📊', text: 'ดูสถานะงาน' },
+                { emoji: '📝', text: 'งานของฉัน' },
+                { emoji: '📞', text: 'ติดต่อเจ้าหน้าที่' },
+                { emoji: '❓', text: 'ช่วยเหลือ' }
+            ];
+            drawRichMenu(menuItems);
+        }
+
+        function generateInternalMenu() {
+            currentMenuType = 'internal';
+            const menuItems = [
+                { emoji: '📋', text: 'งานทั้งหมด' },
+                { emoji: '➕', text: 'สร้างงานใหม่' },
+                { emoji: '🔔', text: 'แจ้งเตือน' },
+                { emoji: '📊', text: 'Dashboard' }
+            ];
+            drawRichMenu(menuItems);
+        }
+
+        function downloadImage() {
+            const canvas = document.getElementById('richMenuCanvas');
+            const menuType = currentMenuType === 'external' ? 'customer' : 'staff';
+            const filename = `pdc_richmenu_${menuType}_${Date.now()}.png`;
+            
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+
+        // Initial render
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                generateExternalMenu();
+            }, 500); // Wait for fonts to load
+        });
+
+        // Auto-regenerate on color change
+        document.getElementById('bgColor').addEventListener('change', () => {
+            if (currentMenuType === 'external') {
+                generateExternalMenu();
+            } else {
+                generateInternalMenu();
+            }
+        });
+
+        document.getElementById('textColor').addEventListener('change', () => {
+            if (currentMenuType === 'external') {
+                generateExternalMenu();
+            } else {
+                generateInternalMenu();
+            }
+        });
+
+        document.getElementById('fontFamily').addEventListener('change', () => {
+            if (currentMenuType === 'external') {
+                generateExternalMenu();
+            } else {
+                generateInternalMenu();
+            }
+        });
+
+        document.getElementById('fontSize').addEventListener('change', () => {
+            if (currentMenuType === 'external') {
+                generateExternalMenu();
+            } else {
+                generateInternalMenu();
+            }
+        });
+    </script>
+</body>
+</html>

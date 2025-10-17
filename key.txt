@@ -1,0 +1,17 @@
+OA Official -  P.D.C Service
+Channal ID: 2008298313
+Secret Key : ea0b3942437efe393a544e748670448c
+Channel access token (long-lived) 
+t8XoQTz7YT0tS6/r0lSAVs0GrzNsJRNe+hp5z3ShjCidGsJLpNBsZXKhJI/vGSO3iJ0LFO9V0r4IXi0QK+3F1ji9+HkqIYkSeVfIAa+tj0cXCV3b55YJmZxoXa9CCJ1GD9VaR4776d8znmQy+B2u/gdB04t89/1O/w1cDnyilFU=
+
+OA Official - Internal
+Channal ID: 2008300091
+Secret Channel : 5b3f68c142ea9607cba34c5bd7970a27
+Channel access token (long-lived) m/MmqpcxQBYvIcp1GldZSRvTUqoVOlNdXBcMj7qrFniIEICKVZ3lR3UdMO1KcQehU+kYwNsW20w/IGDlmyXPggupiG/sIxgKJ6/3sNENQDGcGwDpl2TjwMru+8BRJHutsVNZHNwvYY++2eJUrd3j6gdB04t89/1O/w1cDnyilFU=
+
+LIFF:
+    QUOTATION: '2008297943-16G8DPPz',          
+    WORK_ORDER: '2008297943-goJa0bbw',     
+    STATUS_UPDATE: '2008297943-n63AYqqD',         
+    FINAL_TEST: '2008297943-lvmPvjjb',         
+    FINAL_REPORT: '2008297943-RqO9znnK'       

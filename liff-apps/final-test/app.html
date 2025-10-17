@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDC - บันทึกผลทดสอบไฟฟ้า</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .job-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin: 20px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f093fb;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .label-optional {
+            color: #999;
+            font-weight: 400;
+            font-size: 14px;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        .unit {
+            color: #666;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .pass {
+            color: #28a745;
+        }
+
+        .fail {
+            color: #dc3545;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-file {
+            background: #6c757d;
+            color: white;
+        }
+
+        .photo-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .photo-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .photo-item button {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ บันทึกผลทดสอบไฟฟ้า</h1>
+            <p>Final Electrical Test Results</p>
+        </div>
+
+        <div class="content">
+            <div class="job-info">
+                <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;" id="jobNumber">Loading...</div>
+                <div style="color: #666;" id="customerName"></div>
+            </div>
+
+            <div class="section-title">⚡ ผลการทดสอบ</div>
+
+            <div class="form-group">
+                <label>แรงดันทดสอบ <span class="label-optional">(Voltage)</span></label>
+                <div class="input-group">
+                    <input type="number" id="voltage" step="0.1" placeholder="220">
+                    <span class="unit">V</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>กระแสไฟฟ้า <span class="label-optional">(Current)</span></label>
+                <div class="input-group">
+                    <input type="number" id="current" step="0.1" placeholder="10.5">
+                    <span class="unit">A</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>กำลังไฟฟ้า <span class="label-optional">(Power)</span></label>
+                <div class="input-group">
+                    <input type="number" id="power" step="0.1" placeholder="2.2">
+                    <span class="unit">kW</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ความเร็วรอบ <span class="label-optional">(Speed)</span></label>
+                <div class="input-group">
+                    <input type="number" id="rpm" step="1" placeholder="1450">
+                    <span class="unit">RPM</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ค่าความต้านทานฉนวน <span class="label-optional">(Insulation Resistance)</span></label>
+                <div class="input-group">
+                    <input type="number" id="insulation" step="0.1" placeholder="100">
+                    <span class="unit">MΩ</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>อุณหภูมิ <span class="label-optional">(Temperature)</span></label>
+                <div class="input-group">
+                    <input type="number" id="temperature" step="0.1" placeholder="45">
+                    <span class="unit">°C</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ระดับเสียง <span class="label-optional">(Noise Level)</span></label>
+                <div class="input-group">
+                    <input type="number" id="noise" step="0.1" placeholder="65">
+                    <span class="unit">dB</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ระดับการสั่นสะเทือน <span class="label-optional">(Vibration)</span></label>
+                <div class="input-group">
+                    <input type="number" id="vibration" step="0.1" placeholder="2.5">
+                    <span class="unit">mm/s</span>
+                </div>
+            </div>
+
+            <div class="section-title">📋 ผลการประเมิน</div>
+
+            <div class="form-group">
+                <label>ผลการทดสอบ:</label>
+                <select id="testResult">
+                    <option value="">-- เลือก --</option>
+                    <option value="Pass">✅ ผ่าน (Pass)</option>
+                    <option value="Fail">❌ ไม่ผ่าน (Fail)</option>
+                    <option value="Conditional">⚠️ ผ่านแบบมีเงื่อนไข</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>หมายเหตุเพิ่มเติม:</label>
+                <textarea id="notes" rows="4" placeholder="ระบุข้อสังเกต หรือหมายเหตุเพิ่มเติม..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>ผู้ทดสอบ:</label>
+                <input type="text" id="testerName" placeholder="ชื่อผู้ทดสอบ">
+            </div>
+
+            <div class="section-title">📷 รูปภาพผลทดสอบ</div>
+
+            <input type="file" id="photoInput" accept="image/*" multiple style="display: none;">
+            <button class="btn btn-file" onclick="document.getElementById('photoInput').click()">
+                📷 อัพโหลดรูปภาพ
+            </button>
+            <div class="photo-preview" id="photoPreview"></div>
+
+            <button class="btn btn-primary" onclick="submitTest()">
+                💾 บันทึกผลทดสอบ
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let jobData = null;
+        let userId = null;
+        let selectedPhotos = [];
+
+        async function initializeLIFF() {
+            try {
+                await liff.init({ liffId: '2008297943-lvmPvjjb' });
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                const profile = await liff.getProfile();
+                userId = profile.userId;
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const jobId = urlParams.get('jobId');
+
+                if (jobId) {
+                    await loadJobData(jobId);
+                }
+
+            } catch (error) {
+                console.error('LIFF Error:', error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        async function loadJobData(jobId) {
+            try {
+                const response = await fetch(`https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec?action=getJob&jobId=${jobId}`);
+                jobData = await response.json();
+
+                document.getElementById('jobNumber').textContent = jobData.jobNumber;
+                document.getElementById('customerName').textContent = jobData.customerName;
+
+            } catch (error) {
+                console.error('Load Error:', error);
+            }
+        }
+
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            selectedPhotos = Array.from(e.target.files);
+            displayPhotoPreview();
+        });
+
+        function displayPhotoPreview() {
+            const container = document.getElementById('photoPreview');
+            container.innerHTML = selectedPhotos.map((file, index) => `
+                <div class="photo-item">
+                    <img src="${URL.createObjectURL(file)}" alt="Preview">
+                    <button onclick="removePhoto(${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removePhoto(index) {
+            selectedPhotos.splice(index, 1);
+            displayPhotoPreview();
+        }
+
+        async function submitTest() {
+            const testData = {
+                action: 'submitFinalTest',
+                jobId: jobData.jobId,
+                voltage: document.getElementById('voltage').value,
+                current: document.getElementById('current').value,
+                power: document.getElementById('power').value,
+                rpm: document.getElementById('rpm').value,
+                insulation: document.getElementById('insulation').value,
+                temperature: document.getElementById('temperature').value,
+                noise: document.getElementById('noise').value,
+                vibration: document.getElementById('vibration').value,
+                result: document.getElementById('testResult').value,
+                notes: document.getElementById('notes').value,
+                testerName: document.getElementById('testerName').value,
+                userId: userId
+            };
+
+            if (!testData.result) {
+                alert('กรุณาเลือกผลการทดสอบ');
+                return;
+            }
+
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec', {
+                    method: 'POST',
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ บันทึกผลทดสอบสำเร็จ!');
+                    liff.closeWindow();
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Submit Error:', error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        window.onload = initializeLIFF;
+    </script>
+</body>
+</html>
