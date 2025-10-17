@@ -353,7 +353,7 @@
         // Load job data
         async function loadJobData(jobId) {
             try {
-                const response = await fetch(`https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec?action=getJob&jobId=${jobId}`);
+                const response = await fetch(`https://script.google.com/macros/s/AKfycbx2nmE9w5ea5qBGmfJfK8SCXn4pERD6WPhqoF1PIsxAU09KqdKFhKbTdlmiYh0m4Zpg/exec?action=getJob&jobId=${jobId}`);
                 jobData = await response.json();
 
                 document.getElementById('jobNumber').textContent = jobData.jobNumber;
@@ -429,7 +429,7 @@
                 // Upload photos first
                 const photoUrls = await uploadPhotos();
 
-                const response = await fetch('https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbx2nmE9w5ea5qBGmfJfK8SCXn4pERD6WPhqoF1PIsxAU09KqdKFhKbTdlmiYh0m4Zpg/exec', {
                     method: 'POST',
                     body: JSON.stringify({
                         action: 'updateStatus',
