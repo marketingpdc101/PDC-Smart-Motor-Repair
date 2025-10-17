@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDC Rich Menu Generator</title>
+    
+    <!-- Google Fonts - Thai Support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
         * {
             margin: 0;
@@ -12,7 +18,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Sarabun', 'Noto Sans Thai', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
             min-height: 100vh;
@@ -340,7 +346,7 @@
 
             // Draw menu items
             ctx.fillStyle = textColor;
-            ctx.font = `700 ${fontSize}px ${fontFamily}, sans-serif`;
+            ctx.font = `700 ${fontSize}px ${fontFamily}, "Noto Sans Thai", "Sarabun", sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
@@ -351,11 +357,11 @@
                 const y = row * cellHeight + cellHeight / 2;
 
                 // Draw emoji (larger)
-                ctx.font = `${fontSize * 2.5}px Arial`;
+                ctx.font = `${fontSize * 2.5}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
                 ctx.fillText(item.emoji, x, y - fontSize * 1.2);
 
                 // Draw text
-                ctx.font = `700 ${fontSize}px ${fontFamily}, sans-serif`;
+                ctx.font = `700 ${fontSize}px ${fontFamily}, "Noto Sans Thai", "Sarabun", sans-serif`;
                 ctx.fillText(item.text, x, y + fontSize * 1.2);
             });
 
@@ -369,7 +375,7 @@
             // Add brand watermark
             ctx.fillStyle = textColor;
             ctx.globalAlpha = 0.3;
-            ctx.font = '700 40px Arial';
+            ctx.font = '700 40px "Noto Sans Thai", "Sarabun", sans-serif';
             ctx.textAlign = 'right';
             ctx.fillText('P.D.C Motor Service', canvas.width - 40, canvas.height - 40);
             ctx.globalAlpha = 1;
