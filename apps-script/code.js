@@ -83,13 +83,18 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
+    // ดึง isInternal flag จาก query parameter หรือ header
+    const isInternal = e.parameter.isInternal === 'true' || 
+                       e.parameter.isInternal === true ||
+                       (e.postData.headers && e.postData.headers['X-Channel-Type'] === 'internal');
+    
     // Parse request body
     const contents = JSON.parse(e.postData.contents);
     
     // ตรวจสอบว่าเป็น LINE Webhook หรือ LIFF Action
     if (contents.events) {
-      // LINE Webhook
-      return handleLineWebhook(contents);
+      // LINE Webhook - ส่ง isInternal flag ไปด้วย
+      return handleLineWebhook(contents, isInternal);
     } else if (contents.action) {
       // LIFF Action
       return handleLiffAction(contents);
@@ -120,7 +125,7 @@ function doPost(e) {
 /**
  * Handle LINE Webhook
  */
-function handleLineWebhook(contents) {
+function handleLineWebhook(contents, isInternal) {
   const eventCount = contents.events ? contents.events.length : 0;
   let messageText = '';
   
@@ -131,7 +136,8 @@ function handleLineWebhook(contents) {
   
   logInfo('Webhook received', {
     events: eventCount,
-    message: messageText
+    message: messageText,
+    channel: isInternal ? 'internal' : 'external'
   });
   
   // Return 200 OK to LINE immediately
@@ -139,11 +145,13 @@ function handleLineWebhook(contents) {
     status: 'success'
   })).setMimeType(ContentService.MimeType.JSON);
   
-  // ประมวลผล events แบบ asynchronous
+  // ประมวลผล events แบบ asynchronous พร้อม isInternal flag
   if (contents.events && contents.events.length > 0) {
     try {
       contents.events.forEach((event, index) => {
         try {
+          // เพิ่ม isInternal flag ใน event object
+          event._isInternal = isInternal;
           handleLineEvent(event);
         } catch (eventError) {
           Logger.log('Error handling event #' + (index + 1) + ': ' + eventError.message);

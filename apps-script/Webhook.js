@@ -41,8 +41,8 @@ function handleMessageEvent(event) {
   const messageType = event.message.type;
   const replyToken = event.replyToken;
   
-  // ตรวจสอบว่าเป็น Internal หรือ External OA
-  const isInternal = isInternalUser(userId);
+  // ตรวจสอบว่าเป็น Internal หรือ External OA จาก flag ที่ส่งมาจาก Cloudflare Worker
+  const isInternal = event._isInternal === true;
   
   if (messageType === 'text') {
     const text = event.message.text;
@@ -364,8 +364,8 @@ function handlePostbackEvent(event) {
   const action = data.action;
   const jobId = data.job_id;
   
-  // ตรวจสอบว่าเป็น Internal หรือ External OA
-  const isInternal = isInternalUser(userId);
+  // ตรวจสอบว่าเป็น Internal หรือ External OA จาก flag
+  const isInternal = event._isInternal === true;
   
   // ========================================
   // Internal OA Postback Actions (พนักงาน)
