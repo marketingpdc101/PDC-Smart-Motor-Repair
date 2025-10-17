@@ -5,7 +5,7 @@
  */
 
 /**
- * doGet - Web App GET handler
+ * doGet - Web App GET handler (สำหรับ LIFF Apps)
  */
 function doGet(e) {
   // ถ้าไม่มี parameter ให้แสดงหน้าหลัก (ไม่ต้อง authenticate)
@@ -21,18 +21,52 @@ function doGet(e) {
   
   const action = e.parameter.action;
   
-  switch (action) {
-    case 'health':
-      return healthCheck();
-    case 'config':
-      return showConfig();
-    default:
-      return HtmlService.createHtmlOutput('<h1>PDC Smart Motor Repair API</h1><p>System is running...</p>');
+  try {
+    let result;
+    
+    switch (action) {
+      // System actions
+      case 'health':
+        return healthCheck();
+      case 'config':
+        return showConfig();
+      
+      // LIFF App actions
+      case 'getQuotation':
+        result = getQuotation(e.parameter.jobId);
+        break;
+      
+      case 'getJob':
+        result = getJobDetails(e.parameter.jobId);
+        break;
+      
+      case 'getJobsByCustomer':
+        result = getJobsByCustomer(e.parameter.customerId);
+        break;
+      
+      case 'getMilestones':
+        result = getMilestones(e.parameter.jobId);
+        break;
+      
+      default:
+        result = { error: 'Unknown action: ' + action };
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    logError('doGet error', { action: action, error: error.message });
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      error: error.message,
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 /**
- * doPost - Webhook endpoint สำหรับ LINE
+ * doPost - Webhook endpoint สำหรับ LINE และ LIFF Actions
  * ไม่ต้อง authenticate เพราะ LINE จะไม่มี Google account
  */
 function doPost(e) {
@@ -48,78 +82,123 @@ function doPost(e) {
     // Parse request body
     const contents = JSON.parse(e.postData.contents);
     
-    // ✅ ใช้ logInfo() แทน manual logging
-    const eventCount = contents.events ? contents.events.length : 0;
-    let messageText = '';
-    
-    if (contents.events && contents.events.length > 0 && 
-        contents.events[0].message && contents.events[0].message.text) {
-      messageText = contents.events[0].message.text;
+    // ตรวจสอบว่าเป็น LINE Webhook หรือ LIFF Action
+    if (contents.events) {
+      // LINE Webhook
+      return handleLineWebhook(contents);
+    } else if (contents.action) {
+      // LIFF Action
+      return handleLiffAction(contents);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({
+        error: 'Invalid request format'
+      })).setMimeType(ContentService.MimeType.JSON);
     }
-    
-    // Log ด้วย logInfo()
-    logInfo('Webhook received', {
-      events: eventCount,
-      message: messageText
-    });
-    
-    // Return 200 OK to LINE immediately
-    const response = ContentService.createTextOutput(JSON.stringify({
-      status: 'success'
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-    // ⚡ ประมวลผล events แบบ asynchronous (ไม่รอ)
-    if (contents.events && contents.events.length > 0) {
-      // ใช้ setTimeout เพื่อให้ return response ก่อน แล้วค่อยประมวลผล
-      // (ใน Apps Script จะทำงานต่อหลัง return)
-      try {
-        contents.events.forEach((event, index) => {
-          try {
-            handleLineEvent(event);
-          } catch (eventError) {
-            Logger.log('Error handling event #' + (index + 1) + ': ' + eventError.message);
-          }
-        });
-      } catch (error) {
-        Logger.log('Error processing events: ' + error.message);
-      }
-    }
-    
-    return response;
     
   } catch (error) {
-    // Enhanced error logging with full context
     const errorDetails = {
       message: error.message,
       stack: error.stack,
-      timestamp: new Date().toISOString(),
-      postData: e && e.postData ? {
-        contents: e.postData.contents,
-        length: e.postData.length,
-        type: e.postData.type
-      } : null,
-      parameters: e && e.parameter ? e.parameter : null
+      timestamp: new Date().toISOString()
     };
     
-    console.error('❌ Error in doPost:', JSON.stringify(errorDetails, null, 2));
-    Logger.log('Error in doPost: ' + error.message);
-    Logger.log('Error stack: ' + error.stack);
-    Logger.log('Full error context: ' + JSON.stringify(errorDetails));
+    logError('doPost error', errorDetails);
     
-    // ส่ง notification ไปหา admin (optional)
-    try {
-      if (CONFIG.DEBUG.NOTIFY_ERRORS) {
-        notifyAdminError('doPost Error', errorDetails);
-      }
-    } catch (notifyError) {
-      Logger.log('Failed to notify admin: ' + notifyError.message);
-    }
-    
-    // Still return 200 OK even on error (to prevent LINE from retrying)
+    // Still return 200 OK even on error
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
       message: error.message,
       timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle LINE Webhook
+ */
+function handleLineWebhook(contents) {
+  const eventCount = contents.events ? contents.events.length : 0;
+  let messageText = '';
+  
+  if (contents.events && contents.events.length > 0 && 
+      contents.events[0].message && contents.events[0].message.text) {
+    messageText = contents.events[0].message.text;
+  }
+  
+  logInfo('Webhook received', {
+    events: eventCount,
+    message: messageText
+  });
+  
+  // Return 200 OK to LINE immediately
+  const response = ContentService.createTextOutput(JSON.stringify({
+    status: 'success'
+  })).setMimeType(ContentService.MimeType.JSON);
+  
+  // ประมวลผล events แบบ asynchronous
+  if (contents.events && contents.events.length > 0) {
+    try {
+      contents.events.forEach((event, index) => {
+        try {
+          handleLineEvent(event);
+        } catch (eventError) {
+          Logger.log('Error handling event #' + (index + 1) + ': ' + eventError.message);
+        }
+      });
+    } catch (error) {
+      Logger.log('Error processing events: ' + error.message);
+    }
+  }
+  
+  return response;
+}
+
+/**
+ * Handle LIFF Action
+ */
+function handleLiffAction(data) {
+  const action = data.action;
+  let result;
+  
+  try {
+    switch (action) {
+      // Quotation actions
+      case 'approveQuotation':
+        result = approveQuotation(data.jobId, data.userId, data.note);
+        break;
+      
+      case 'rejectQuotation':
+        result = rejectQuotation(data.jobId, data.userId, data.note);
+        break;
+      
+      // Status update actions
+      case 'updateStatus':
+        result = updateJobMilestone(data.jobId, data.milestone, data.note, data.photos, data.userId);
+        break;
+      
+      // Final test actions
+      case 'submitFinalTest':
+        result = submitFinalTest(data);
+        break;
+      
+      // Final report actions
+      case 'submitFinalReport':
+        result = submitFinalReport(data);
+        break;
+      
+      default:
+        result = { success: false, error: 'Unknown action: ' + action };
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    logError('LIFF action error', { action: action, error: error.message });
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.message
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
