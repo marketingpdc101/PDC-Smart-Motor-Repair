@@ -2,12 +2,6 @@ name = "pdc-webhook-proxy"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# Routes
-routes = [
-  { pattern = "pdc-webhook-proxy.workers.dev/webhook/internal", custom_domain = false },
-  { pattern = "pdc-webhook-proxy.workers.dev/webhook/external", custom_domain = false }
-]
-
 # Bindings (if needed)
 # [vars]
 # ENVIRONMENT = "production"
