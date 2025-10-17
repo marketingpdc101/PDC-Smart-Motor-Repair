@@ -5,6 +5,174 @@
  */
 
 // ========================================
+// POST Functions - Job Creation
+// ========================================
+
+/**
+ * สร้างงานใหม่พร้อมรายการซ่อม
+ * @param {object} jobData - ข้อมูลงาน
+ * @return {object} Result with jobId
+ */
+function createJobWithItems(jobData) {
+  try {
+    // 1. สร้างหรือหา Customer
+    let customerId = jobData.customerId;
+    
+    if (!customerId) {
+      // สร้าง Customer ใหม่
+      customerId = createCustomer({
+        company: jobData.company,
+        contactName: jobData.contactName,
+        contactPhone: jobData.contactPhone,
+        contactEmail: jobData.contactEmail || '',
+        address: jobData.address || '',
+        lineUserId: '', // จะอัพเดททีหลังเมื่อลูกค้า Add Friend
+        customerType: 'Corporate'
+      });
+    }
+    
+    // 2. สร้าง Job
+    const jobId = createJob({
+      customer_id: customerId,
+      customer_name: jobData.contactName,
+      company: jobData.company,
+      sales_owner: jobData.createdByName || 'Unknown',
+      asset_desc: jobData.assetDesc,
+      serial_no: jobData.serialNo || '',
+      brand: jobData.brand,
+      model: jobData.model || '',
+      priority: jobData.priority || 'Normal',
+      notes: jobData.notes || '',
+      created_by: jobData.createdBy || 'System'
+    });
+    
+    // 3. สร้าง Job Items
+    let totalAmount = 0;
+    if (jobData.items && jobData.items.length > 0) {
+      jobData.items.forEach(item => {
+        createJobItem({
+          job_id: jobId,
+          line_no: item.lineNo,
+          title: item.title,
+          tech_detail: item.techDetail || '',
+          uom: item.uom || 'ชุด',
+          qty: item.qty,
+          unit_price: item.unitPrice,
+          discount_percent: item.discountPercent || 0,
+          subtotal: item.subtotal,
+          is_quoted: true,
+          is_approved: false
+        });
+        
+        totalAmount += item.subtotal;
+      });
+    }
+    
+    // 4. อัพเดท Lead Time และ Quotation Amount
+    const leadTimeDays = parseInt(jobData.leadTime) || CONFIG.BUSINESS.DEFAULT_LEAD_TIME_DAYS;
+    const etaFinish = calculateETA(leadTimeDays);
+    const quotationNo = generateQuotationNumber();
+    
+    updateJob(jobId, {
+      eta_finish: etaFinish,
+      quotation_no: quotationNo,
+      quotation_amount: totalAmount,
+      quotation_sent_at: new Date(),
+      status: CONFIG.STATUS.PENDING_APPROVAL
+    });
+    
+    // 5. Log Event
+    logJobEvent(jobId, 'job_created', jobData.createdByName || 'System', {
+      customer: jobData.company,
+      items_count: jobData.items ? jobData.items.length : 0,
+      total_amount: totalAmount
+    });
+    
+    // 6. TODO: Generate Quotation PDF
+    // const pdfUrl = generateQuotationPDF(jobId);
+    
+    // 7. TODO: Send notification to customer
+    // notifyCustomerQuotation(jobId);
+    
+    return {
+      success: true,
+      jobId: jobId,
+      quotationNo: quotationNo,
+      totalAmount: totalAmount,
+      message: 'สร้างงานสำเร็จ'
+    };
+    
+  } catch (error) {
+    Logger.log('Error in createJobWithItems: ' + error.toString());
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * สร้าง Customer ใหม่
+ */
+function createCustomer(customerData) {
+  const sheet = getSheet(CONFIG.SHEETS.CUSTOMERS);
+  const customerId = 'CUST-' + Date.now();
+  const timestamp = new Date();
+  
+  const row = [
+    customerId,
+    customerData.company || '',
+    customerData.contactName || '',
+    customerData.contactEmail || '',
+    customerData.contactPhone || '',
+    customerData.lineUserId || '',
+    customerData.lineDisplayName || '',
+    customerData.address || '',
+    customerData.taxId || '',
+    customerData.customerType || 'Corporate',
+    30, // credit_term_days
+    0,  // credit_limit
+    true, // is_active
+    '', // tags
+    timestamp,
+    timestamp
+  ];
+  
+  sheet.appendRow(row);
+  return customerId;
+}
+
+/**
+ * สร้างเลขที่ใบเสนอราคา
+ */
+function generateQuotationNumber() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const prefix = `${CONFIG.NUMBERING.QUOTATION_PREFIX}-${year}${month}-`;
+  
+  const sheet = getSheet(CONFIG.SHEETS.JOBS);
+  const data = sheet.getDataRange().getValues();
+  let maxNum = 0;
+  
+  const quotationNoCol = data[0].indexOf('quotation_no');
+  
+  for (let i = 1; i < data.length; i++) {
+    const quotationNo = data[i][quotationNoCol];
+    if (quotationNo && quotationNo.startsWith(prefix)) {
+      const parts = quotationNo.split('-');
+      if (parts.length >= 3) {
+        const num = parseInt(parts[2]);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+  }
+  
+  const nextNum = String(maxNum + 1).padStart(CONFIG.NUMBERING.DIGIT_LENGTH, '0');
+  return `${prefix}${nextNum}`;
+}
+
+// ========================================
 // GET Functions (สำหรับดึงข้อมูล)
 // ========================================
 
@@ -604,6 +772,64 @@ function saveTestResult(testData) {
   sheet.appendRow(row);
   
   return testId;
+}
+
+/**
+ * ดึงรายการงานทั้งหมด
+ * @param {string} statusFilter - Filter by status (optional)
+ * @param {number} limit - จำนวนที่ต้องการดึง (default: 50)
+ * @return {array} Jobs list
+ */
+function getAllJobs(statusFilter, limit) {
+  try {
+    const sheet = getSheet(CONFIG.SHEETS.JOBS);
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const jobs = [];
+    const maxRows = limit ? Math.min(data.length, parseInt(limit) + 1) : data.length;
+    
+    for (let i = 1; i < maxRows; i++) {
+      const job = arrayToObject(headers, data[i]);
+      
+      // Filter by status if provided
+      if (!statusFilter || job.status === statusFilter) {
+        jobs.push({
+          jobId: job.job_id,
+          quotationNo: job.quotation_no,
+          customerName: job.customer_name,
+          company: job.company,
+          assetDesc: job.asset_desc,
+          brand: job.brand,
+          model: job.model,
+          status: job.status,
+          milestone: job.milestone,
+          priority: job.priority,
+          quotationAmount: job.quotation_amount,
+          etaStart: job.eta_start,
+          etaFinish: job.eta_finish,
+          createdAt: job.created_at,
+          updatedAt: job.updated_at
+        });
+      }
+    }
+    
+    // เรียงตามวันที่สร้างล่าสุด
+    jobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    return {
+      success: true,
+      jobs: jobs,
+      count: jobs.length
+    };
+    
+  } catch (error) {
+    Logger.log('Error in getAllJobs: ' + error.toString());
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
 }
 
 /**

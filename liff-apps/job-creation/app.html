@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สร้างงานใหม่ - PDC Motor Repair</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 24px;
+        }
+
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .required {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Job Items Section */
+        .items-container {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .item-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .item-number {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .remove-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background: #dc2626;
+        }
+
+        .add-item-btn {
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-item-btn:hover {
+            background: #059669;
+        }
+
+        /* Price Summary */
+        .price-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .price-row.total {
+            border-top: 2px solid rgba(255,255,255,0.3);
+            margin-top: 12px;
+            padding-top: 12px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-addon {
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🆕 สร้างงานใหม่</h1>
+            <p>Job Creation Form</p>
+        </div>
+
+        <div class="content">
+            <form id="jobForm">
+                <!-- Customer Information -->
+                <div class="section">
+                    <div class="section-title">👤 ข้อมูลลูกค้า</div>
+                    
+                    <div class="form-group">
+                        <label>ชื่อบริษัท <span class="required">*</span></label>
+                        <input type="text" id="company" required placeholder="บริษัท ABC จำกัด">
+                    </div>
+
+                    <div class="row">
+                        <div class="form-group">
+                            <label>ชื่อผู้ติดต่อ <span class="required">*</span></label>
+                            <input type="text" id="contactName" required placeholder="คุณสมชาย">
+                        </div>
+                        <div class="form-group">
+                            <label>เบอร์โทร <span class="required">*</span></label>
+                            <input type="tel" id="contactPhone" required placeholder="089-xxx-xxxx">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>อีเมล</label>
+                        <input type="email" id="contactEmail" placeholder="customer@company.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ที่อยู่</label>
+                        <textarea id="address" placeholder="123 ถนน... แขวง... เขต... กรุงเทพฯ 10xxx"></textarea>
+                    </div>
+                </div>
+
+                <!-- Motor Information -->
+                <div class="section">
+                    <div class="section-title">⚙️ ข้อมูลมอเตอร์</div>
+                    
+                    <div class="form-group">
+                        <label>รายละเอียดมอเตอร์ <span class="required">*</span></label>
+                        <input type="text" id="assetDesc" required placeholder="มอเตอร์ไฟฟ้า 3 Phase 50 HP 380V">
+                    </div>
+
+                    <div class="row">
+                        <div class="form-group">
+                            <label>ยี่ห้อ <span class="required">*</span></label>
+                            <select id="brand" required>
+                                <option value="">-- เลือกยี่ห้อ --</option>
+                                <option value="MITSUBISHI">MITSUBISHI</option>
+                                <option value="TOSHIBA">TOSHIBA</option>
+                                <option value="HITACHI">HITACHI</option>
+                                <option value="SIEMENS">SIEMENS</option>
+                                <option value="ABB">ABB</option>
+                                <option value="WEG">WEG</option>
+                                <option value="TECO">TECO</option>
+                                <option value="BROOK CROMPTON">BROOK CROMPTON</option>
+                                <option value="OTHER">อื่นๆ</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>รุ่น</label>
+                            <input type="text" id="model" placeholder="SF-JRV 50HP">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Serial Number</label>
+                            <input type="text" id="serialNo" placeholder="ABC-12345-XYZ">
+                        </div>
+                        <div class="form-group">
+                            <label>ความเร่งด่วน <span class="required">*</span></label>
+                            <select id="priority" required>
+                                <option value="Normal">ปกติ</option>
+                                <option value="High">เร่งด่วน</option>
+                                <option value="Urgent">ด่วนมาก</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lead Time (วัน) <span class="required">*</span></label>
+                        <input type="number" id="leadTime" value="7" min="1" required>
+                        <p class="help-text">ระยะเวลาที่ใช้ในการซ่อม (นับจากวันอนุมัติ)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเหตุ</label>
+                        <textarea id="notes" placeholder="รายละเอียดเพิ่มเติม เช่น อาการเสีย สิ่งที่ต้องเปลี่ยน..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Job Items -->
+                <div class="section">
+                    <div class="section-title">🔧 รายการซ่อม</div>
+                    
+                    <div class="items-container" id="itemsContainer">
+                        <!-- Items will be added here dynamically -->
+                    </div>
+
+                    <button type="button" class="add-item-btn" onclick="addItem()">
+                        <span>➕</span> เพิ่มรายการซ่อม
+                    </button>
+                </div>
+
+                <!-- Price Summary -->
+                <div class="price-summary">
+                    <div class="price-row">
+                        <span>ยอดรวม (ก่อนส่วนลด)</span>
+                        <span id="subtotal">฿0.00</span>
+                    </div>
+                    <div class="price-row">
+                        <span>ส่วนลด</span>
+                        <span id="discount">฿0.00</span>
+                    </div>
+                    <div class="price-row">
+                        <span>ยอดรวม (หลังส่วนลด)</span>
+                        <span id="afterDiscount">฿0.00</span>
+                    </div>
+                    <div class="price-row">
+                        <span>VAT 7%</span>
+                        <span id="vat">฿0.00</span>
+                    </div>
+                    <div class="price-row total">
+                        <span>ยอดรวมสุทธิ</span>
+                        <span id="grandTotal">฿0.00</span>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                        🔄 ล้างข้อมูล
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        💾 บันทึก + สร้างใบเสนอราคา
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbmnu29mXdvX9bJlHJLSaNo7B78uEbuBgIfNOr_8S9TR3BSGuNLrDIgyw6YijvnmT0/exec';
+        let liffProfile = null;
+        let itemCounter = 0;
+
+        // Initialize LIFF
+        async function initializeLIFF() {
+            try {
+                await liff.init({ liffId: '2008297943-16G8DPPz' }); // Replace with actual LIFF ID
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                liffProfile = await liff.getProfile();
+                console.log('LIFF Profile:', liffProfile);
+
+                // Add first item automatically
+                addItem();
+                
+            } catch (error) {
+                console.error('LIFF Initialization Error:', error);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE');
+            }
+        }
+
+        // Add Job Item
+        function addItem() {
+            itemCounter++;
+            const container = document.getElementById('itemsContainer');
+            
+            const itemCard = document.createElement('div');
+            itemCard.className = 'item-card';
+            itemCard.id = `item-${itemCounter}`;
+            itemCard.innerHTML = `
+                <div class="item-header">
+                    <span class="item-number">รายการที่ ${itemCounter}</span>
+                    ${itemCounter > 1 ? '<button type="button" class="remove-btn" onclick="removeItem(' + itemCounter + ')">🗑️ ลบ</button>' : ''}
+                </div>
+                
+                <div class="form-group">
+                    <label>รายการซ่อม <span class="required">*</span></label>
+                    <input type="text" class="item-title" required placeholder="เช่น พันขดลวด Stator ใหม่">
+                </div>
+                
+                <div class="form-group">
+                    <label>รายละเอียดเพิ่มเติม</label>
+                    <textarea class="item-detail" placeholder="รายละเอียดทางเทคนิค วัสดุที่ใช้..."></textarea>
+                </div>
+                
+                <div class="row">
+                    <div class="form-group">
+                        <label>จำนวน <span class="required">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="item-qty" value="1" min="1" required onchange="calculatePrice()">
+                            <select class="item-uom">
+                                <option value="ชุด">ชุด</option>
+                                <option value="งาน">งาน</option>
+                                <option value="ตัว">ตัว</option>
+                                <option value="อัน">อัน</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>ราคา/หน่วย <span class="required">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="item-price" value="0" min="0" required onchange="calculatePrice()">
+                            <span class="input-addon">บาท</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>ส่วนลด (%)</label>
+                    <input type="number" class="item-discount" value="0" min="0" max="100" onchange="calculatePrice()">
+                </div>
+            `;
+            
+            container.appendChild(itemCard);
+        }
+
+        // Remove Job Item
+        function removeItem(itemId) {
+            const item = document.getElementById(`item-${itemId}`);
+            if (item) {
+                item.remove();
+                calculatePrice();
+            }
+        }
+
+        // Calculate Total Price
+        function calculatePrice() {
+            let subtotal = 0;
+            let totalDiscount = 0;
+            
+            const items = document.querySelectorAll('.item-card');
+            items.forEach(item => {
+                const qty = parseFloat(item.querySelector('.item-qty').value) || 0;
+                const price = parseFloat(item.querySelector('.item-price').value) || 0;
+                const discount = parseFloat(item.querySelector('.item-discount').value) || 0;
+                
+                const itemSubtotal = qty * price;
+                const itemDiscount = itemSubtotal * (discount / 100);
+                
+                subtotal += itemSubtotal;
+                totalDiscount += itemDiscount;
+            });
+            
+            const afterDiscount = subtotal - totalDiscount;
+            const vat = afterDiscount * 0.07;
+            const grandTotal = afterDiscount + vat;
+            
+            document.getElementById('subtotal').textContent = '฿' + subtotal.toLocaleString('th-TH', {minimumFractionDigits: 2});
+            document.getElementById('discount').textContent = '฿' + totalDiscount.toLocaleString('th-TH', {minimumFractionDigits: 2});
+            document.getElementById('afterDiscount').textContent = '฿' + afterDiscount.toLocaleString('th-TH', {minimumFractionDigits: 2});
+            document.getElementById('vat').textContent = '฿' + vat.toLocaleString('th-TH', {minimumFractionDigits: 2});
+            document.getElementById('grandTotal').textContent = '฿' + grandTotal.toLocaleString('th-TH', {minimumFractionDigits: 2});
+        }
+
+        // Reset Form
+        function resetForm() {
+            if (confirm('ต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?')) {
+                document.getElementById('jobForm').reset();
+                document.getElementById('itemsContainer').innerHTML = '';
+                itemCounter = 0;
+                addItem();
+                calculatePrice();
+            }
+        }
+
+        // Submit Form
+        document.getElementById('jobForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!liffProfile) {
+                alert('กรุณารอสักครู่...');
+                return;
+            }
+            
+            // Collect form data
+            const formData = {
+                // Customer Info
+                company: document.getElementById('company').value,
+                contactName: document.getElementById('contactName').value,
+                contactPhone: document.getElementById('contactPhone').value,
+                contactEmail: document.getElementById('contactEmail').value,
+                address: document.getElementById('address').value,
+                
+                // Motor Info
+                assetDesc: document.getElementById('assetDesc').value,
+                brand: document.getElementById('brand').value,
+                model: document.getElementById('model').value,
+                serialNo: document.getElementById('serialNo').value,
+                priority: document.getElementById('priority').value,
+                leadTime: document.getElementById('leadTime').value,
+                notes: document.getElementById('notes').value,
+                
+                // Items
+                items: [],
+                
+                // User Info
+                createdBy: liffProfile.userId,
+                createdByName: liffProfile.displayName
+            };
+            
+            // Collect items
+            const itemCards = document.querySelectorAll('.item-card');
+            itemCards.forEach((item, index) => {
+                const qty = parseFloat(item.querySelector('.item-qty').value);
+                const price = parseFloat(item.querySelector('.item-price').value);
+                const discount = parseFloat(item.querySelector('.item-discount').value) || 0;
+                const subtotal = (qty * price) * (1 - discount / 100);
+                
+                formData.items.push({
+                    lineNo: index + 1,
+                    title: item.querySelector('.item-title').value,
+                    techDetail: item.querySelector('.item-detail').value,
+                    uom: item.querySelector('.item-uom').value,
+                    qty: qty,
+                    unitPrice: price,
+                    discountPercent: discount,
+                    subtotal: subtotal
+                });
+            });
+            
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'createJob',
+                        data: JSON.stringify(formData)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ สร้างงานสำเร็จ!\n\nJob ID: ' + result.jobId + '\n\nกำลังปิดหน้าต่าง...');
+                    liff.closeWindow();
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด: ' + result.error);
+                }
+                
+            } catch (error) {
+                console.error('Submit Error:', error);
+                alert('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        });
+
+        // Initialize on load
+        window.onload = initializeLIFF;
+    </script>
+</body>
+</html>

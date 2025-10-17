@@ -48,6 +48,10 @@ function doGet(e) {
         result = getMilestones(e.parameter.jobId);
         break;
       
+      case 'getAllJobs':
+        result = getAllJobs(e.parameter.status, e.parameter.limit);
+        break;
+      
       default:
         result = { error: 'Unknown action: ' + action };
     }
@@ -162,6 +166,12 @@ function handleLiffAction(data) {
   
   try {
     switch (action) {
+      // Job creation action
+      case 'createJob':
+        const jobData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+        result = createJobWithItems(jobData);
+        break;
+      
       // Quotation actions
       case 'approveQuotation':
         result = approveQuotation(data.jobId, data.userId, data.note);
